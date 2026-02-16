@@ -40,6 +40,9 @@ npm-debug.log*
 .gsd/
 .agent/
 .gemini/
+.codex/
+.agentdocs/
+AGENTS.md
 
 # OS
 Thumbs.db

@@ -4,7 +4,7 @@ import {
   LineChart, Line, CartesianGrid, Legend
 } from "recharts";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 /* ═══════════════════════════════════════════════════════════════════════
    TOAST NOTIFICATION SYSTEM
@@ -237,6 +237,54 @@ function CausalChain({ chain, onClose }) {
   );
 }
 
+function RecommendationsPanel({ recommendations, onAction }) {
+  if (!recommendations || recommendations.length === 0) return null;
+  const actionable = recommendations.filter(rec => !!rec.command);
+  const strategic = recommendations.filter(rec => !rec.command);
+  return (
+    <div style={{ marginBottom: 18, padding: 14, borderRadius: 14, background: "rgba(96,165,250,0.04)", border: "1px solid rgba(96,165,250,0.12)" }}>
+      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1.6, color: "rgba(255,255,255,0.32)", marginBottom: 10 }}>
+        AI Action Recommendations
+      </div>
+      {actionable.length === 0 && (
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", padding: "8px 4px" }}>
+          No executable actions right now. Turn demo mode off or wait for fresh drift.
+        </div>
+      )}
+      <div style={{ display: "grid", gap: 8 }}>
+        {actionable.map((rec) => (
+          <div key={`${rec.rank}-${rec.title}`} style={{
+            padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(255,255,255,0.05)", display: "flex", gap: 12, alignItems: "center",
+          }}>
+            <div style={{ minWidth: 26, height: 26, borderRadius: 999, background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#60a5fa", fontWeight: 700 }}>
+              {rec.rank}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.78)", fontWeight: 600 }}>{rec.title}</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.42)", marginTop: 2 }}>{rec.rationale}</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.28)", marginTop: 3 }}>
+                Score {rec.score} · Est. impact ${(rec.expected_risk_reduction_usd || 0).toLocaleString()}
+              </div>
+            </div>
+            <button onClick={() => onAction(rec.command)} style={{
+              padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(34,197,94,0.3)",
+              background: "rgba(34,197,94,0.12)", color: "#22c55e", fontSize: 10, fontWeight: 700, cursor: "pointer",
+            }}>
+              Execute
+            </button>
+          </div>
+        ))}
+      </div>
+      {strategic.length > 0 && (
+        <div style={{ marginTop: 8, fontSize: 10, color: "rgba(251,191,36,0.72)" }}>
+          {strategic.length} strategy recommendation available in Tariffs tab (non-executable).
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    SKU DETAIL MODAL
    ═══════════════════════════════════════════════════════════════════════ */
@@ -294,7 +342,7 @@ function SKUModal({ item, historyData, alerts, onAction, onClose }) {
         )}
 
         {/* Key metrics */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 20 }}>
           <div style={{ padding: 12, borderRadius: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
             <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: 1, color: "rgba(255,255,255,0.25)" }}>True ATP</div>
             <div style={{ fontSize: 18, fontWeight: 700, color: "#60a5fa", marginTop: 4 }}>{item.true_atp}</div>
@@ -306,6 +354,15 @@ function SKUModal({ item, historyData, alerts, onAction, onClose }) {
           <div style={{ padding: 12, borderRadius: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
             <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: 1, color: "rgba(255,255,255,0.25)" }}>Lead Time</div>
             <div style={{ fontSize: 18, fontWeight: 700, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>{item.lead_time_days}d</div>
+          </div>
+          <div style={{ padding: 12, borderRadius: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
+            <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: 1, color: "rgba(255,255,255,0.25)" }}>Stockout (7d)</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: (item.stockout_forecast?.risk_7d || 0) >= 60 ? "#f87171" : "#fbbf24", marginTop: 4 }}>
+              {item.stockout_forecast?.risk_7d != null ? `${item.stockout_forecast.risk_7d}%` : "—"}
+            </div>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", marginTop: 2 }}>
+              {item.stockout_forecast?.days_to_stockout != null ? `~${item.stockout_forecast.days_to_stockout}d cover` : "No forecast"}
+            </div>
           </div>
         </div>
 
@@ -350,7 +407,7 @@ function SKUModal({ item, historyData, alerts, onAction, onClose }) {
 /* ═══════════════════════════════════════════════════════════════════════
    INVENTORY TAB (with chart, sparklines, search, filter)
    ═══════════════════════════════════════════════════════════════════════ */
-function InventoryTab({ inventory, onAction, historyData, alerts, onSelectSKU }) {
+function InventoryTab({ inventory, onAction, historyData, alerts, recommendations, onSelectSKU }) {
   const [hov, setHov] = useState(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
@@ -418,6 +475,8 @@ function InventoryTab({ inventory, onAction, historyData, alerts, onSelectSKU })
         <Card label="Capital at Risk" value={<AnimNum value={totalRisk} prefix="$" />} sub="From inventory gaps" color="#fbbf24" delay={160} />
         <Card label="Critical" value={<AnimNum value={criticals} />} sub="Needs immediate action" color="#f87171" delay={240} />
       </div>
+
+      <RecommendationsPanel recommendations={recommendations} onAction={onAction} />
 
       {/* Pulse Map */}
       <PulseMap inventory={inventory} />
@@ -531,7 +590,18 @@ function InventoryTab({ inventory, onAction, historyData, alerts, onSelectSKU })
               {/* Product */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.8)" }}>
                 <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: status === "critical" ? "#ef4444" : status === "warning" ? "#f59e0b" : "#22c55e", boxShadow: status === "critical" ? "0 0 8px rgba(239,68,68,0.4)" : "none" }} />
-                {item.name}
+                <span>{item.name}</span>
+                {item.stockout_forecast?.risk_7d != null && (
+                  <span style={{
+                    fontSize: 9, padding: "2px 6px", borderRadius: 999,
+                    background: item.stockout_forecast.risk_7d >= 60 ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.14)",
+                    border: item.stockout_forecast.risk_7d >= 60 ? "1px solid rgba(239,68,68,0.3)" : "1px solid rgba(245,158,11,0.24)",
+                    color: item.stockout_forecast.risk_7d >= 60 ? "#f87171" : "#fbbf24",
+                    fontWeight: 700,
+                  }}>
+                    {item.stockout_forecast.risk_7d}% 7d
+                  </span>
+                )}
               </div>
               {/* SKU */}
               <div style={{ textAlign: "right", fontSize: 11, color: "rgba(255,255,255,0.3)", fontFamily: "monospace" }}>{item.id}</div>
@@ -562,8 +632,13 @@ function InventoryTab({ inventory, onAction, historyData, alerts, onSelectSKU })
               {/* True ATP */}
               <div style={{ textAlign: "right", fontSize: 13, color: "#60a5fa", fontWeight: 700 }}>{item.true_atp}</div>
               {/* Risk */}
-              <div style={{ textAlign: "right", fontSize: 13, color: item.risk_value > 0 ? "#fbbf24" : "rgba(255,255,255,0.15)", fontWeight: item.risk_value > 0 ? 600 : 400 }}>
+              <div style={{ textAlign: "right", fontSize: 13, color: item.risk_value > 0 ? "#fbbf24" : "rgba(255,255,255,0.15)", fontWeight: item.risk_value > 0 ? 600 : 400, lineHeight: 1.2 }}>
                 {item.risk_value > 0 ? `$${(item.risk_value / 1000).toFixed(1)}K` : "\u2014"}
+                {item.stockout_forecast?.risk_14d != null && (
+                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.32)", marginTop: 2 }}>
+                    {item.stockout_forecast.risk_14d}% 14d
+                  </div>
+                )}
               </div>
               {/* Action */}
               <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }} onClick={e => e.stopPropagation()}>
@@ -910,6 +985,8 @@ function ParserTab() {
   const [parsing, setParsing] = useState(false);
   const [extractedFields, setExtractedFields] = useState([]);
   const [anomalies, setAnomalies] = useState([]);
+  const [supplierRisk, setSupplierRisk] = useState(null);
+  const [supplierLeaderboard, setSupplierLeaderboard] = useState([]);
 
   const defaultEmail = `From: nguyen.thanh@vietextile.com
 To: sourcing@ridgelineoutdoor.com
@@ -941,8 +1018,19 @@ Viet Textile Manufacturing Co.`;
     factory_load: "Factory Load",
   };
 
+  const fetchSupplierRisks = useCallback(() => {
+    fetch(`${API}/api/supplier-risks`)
+      .then(res => res.json())
+      .then(data => setSupplierLeaderboard(data.suppliers || []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetchSupplierRisks();
+  }, [fetchSupplierRisks]);
+
   const handleParse = () => {
-    setParsing(true); setParsed(false); setExtractedFields([]); setAnomalies([]);
+    setParsing(true); setParsed(false); setExtractedFields([]); setAnomalies([]); setSupplierRisk(null);
     fetch(`${API}/api/parse`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: emailText }),
@@ -955,6 +1043,8 @@ Viet Textile Manufacturing Co.`;
           .map(([k, v]) => [FIELD_LABELS[k] || k.replace(/_/g, " "), String(v)]);
         setExtractedFields(fields);
         setAnomalies(ext.anomalies || []);
+        setSupplierRisk(data.supplier_risk || null);
+        fetchSupplierRisks();
         setParsed(true);
       } else if (data.error) {
         setExtractedFields([["Error", data.error]]); setParsed(true);
@@ -1034,6 +1124,47 @@ Viet Textile Manufacturing Co.`;
                 </div>
               </div>
             )}
+            {supplierRisk?.latest && (
+              <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: "rgba(96,165,250,0.06)", border: "1px solid rgba(96,165,250,0.14)" }}>
+                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1.6, color: "rgba(255,255,255,0.3)", marginBottom: 8 }}>
+                  Supplier Risk Model
+                </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>{supplierRisk.latest.supplier}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: supplierRisk.latest.score >= 70 ? "#f87171" : supplierRisk.latest.score >= 45 ? "#fbbf24" : "#22c55e" }}>
+                    {supplierRisk.latest.score}
+                  </div>
+                </div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.42)", marginBottom: 10 }}>
+                  Trend: {supplierRisk.latest.trend} · Confidence {(supplierRisk.latest.confidence * 100).toFixed(0)}% · Origin {supplierRisk.latest.origin}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6 }}>
+                  {Object.entries(supplierRisk.latest.components || {}).filter(([k]) => k !== "tariff_delta_pts").map(([k, v]) => (
+                    <div key={k} style={{ padding: "6px 8px", borderRadius: 8, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <div style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: 1, color: "rgba(255,255,255,0.28)" }}>{k}</div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)", fontWeight: 600, marginTop: 2 }}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {supplierLeaderboard.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: "rgba(255,255,255,0.28)", marginBottom: 6 }}>
+                  Tracked Suppliers
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {supplierLeaderboard.slice(0, 4).map((s, i) => (
+                    <div key={`${s.supplier}-${i}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", borderRadius: 8, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>{s.supplier}</span>
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.38)" }}>
+                        {s.score} · {s.trend}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1055,12 +1186,12 @@ export default function NexusLink() {
 function NexusLinkApp() {
   const [tab, setTab] = useState("inventory");
   const [data, setData] = useState(null);
+  const [demoMode, setDemoMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [newAlerts, setNewAlerts] = useState(false);
   const [historyData, setHistoryData] = useState({});
   const [healthScore, setHealthScore] = useState(0);
-  const [healthBreakdown, setHealthBreakdown] = useState({});
   const [selectedSKU, setSelectedSKU] = useState(null);
   const [expandedAlert, setExpandedAlert] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -1071,6 +1202,7 @@ function NexusLinkApp() {
   const fetchData = useCallback(() => {
     fetch(`${API}/inventory`).then(res => res.json()).then(d => {
       if (d.error) { setError(true); return; }
+      setDemoMode(Boolean(d.demo_mode));
       setData(prev => {
         if (prev && d.alerts && d.alerts.length > (prev.alerts?.length || 0)) {
           setNewAlerts(true);
@@ -1089,7 +1221,6 @@ function NexusLinkApp() {
   const fetchHealth = useCallback(() => {
     fetch(`${API}/api/health`).then(res => res.json()).then(d => {
       setHealthScore(d.score || 0);
-      setHealthBreakdown(d.breakdown || {});
     }).catch(() => {});
   }, []);
 
@@ -1128,6 +1259,18 @@ function NexusLinkApp() {
       toast(d.message || "Action executed", d.status === "success" ? "success" : "warning");
     }).catch(() => toast("Action failed", "error"));
   }, [fetchData, fetchHealth, toast]);
+
+  const toggleDemoMode = useCallback(() => {
+    fetch(`${API}/api/demo-mode`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: !demoMode }),
+    }).then(res => res.json()).then(d => {
+      setDemoMode(Boolean(d.demo_mode));
+      fetchData();
+      toast(d.message || "Demo mode updated", "info");
+    }).catch(() => toast("Failed to update demo mode", "error"));
+  }, [demoMode, fetchData, toast]);
 
   const tabs = [
     { id: "inventory", label: "Inventory", icon: "📦", key: "1" },
@@ -1220,6 +1363,15 @@ function NexusLinkApp() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={toggleDemoMode} style={{
+            padding: "5px 12px", borderRadius: 18,
+            background: demoMode ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.025)",
+            border: demoMode ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.05)",
+            color: demoMode ? "#fbbf24" : "rgba(255,255,255,0.35)",
+            fontSize: 10, fontWeight: 600, cursor: "pointer"
+          }}>
+            {demoMode ? "Demo Mode On" : "Demo Mode Off"}
+          </button>
           <HealthRing score={healthScore} />
           <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 12px", borderRadius: 18, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.12)" }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", animation: "glow 2s ease infinite" }} />
@@ -1365,7 +1517,7 @@ function NexusLinkApp() {
           <div key={tab} style={{ animation: "fadeUp 0.35s ease" }}>
             {tab === "inventory" && (
               <InventoryTab inventory={data.inventory} onAction={handleAction} historyData={historyData}
-                alerts={alertItems} onSelectSKU={setSelectedSKU} />
+                alerts={alertItems} recommendations={data.recommendations || []} onSelectSKU={setSelectedSKU} />
             )}
             {tab === "tariffs" && <TariffTab inventory={data.inventory} tariffs={data.tariffs} />}
             {tab === "ai" && <AITab onAction={handleAction} />}

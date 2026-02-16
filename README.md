@@ -15,6 +15,10 @@
 - **Tariff Scenario Engine**: Compare "Do Nothing" vs "Shift to Mexico" vs "Split Sourcing" with dynamic financial projections
 - **AI Query Console**: Conversational GPT-4o interface with streaming responses and full supply chain context
 - **Smart Doc Parser**: Paste a supplier email — AI extracts structured data and cross-references against live inventory, tariffs, and alerts
+- **Action Recommendation Engine**: Ranked top-3 next actions with impact, urgency, and confidence scoring
+- **Stockout Forecasting**: Per-SKU 7-day/14-day stockout probability and days-of-cover estimates
+- **Supplier Risk Scoring**: Parser output is converted into supplier-level risk scores with trend tracking
+- **Deterministic Demo Mode**: Pause simulation drift for stable recordings and judging walkthroughs
 - **Real-Time Health Score**: Composite 0-100 score tracking inventory sync, risk exposure, returns flow, and alert health
 
 ## High-Level Architecture
@@ -30,7 +34,7 @@ flowchart LR
 
     subgraph Backend ["Backend - FastAPI + Uvicorn"]
         SIM["Simulation Engine\n5s tick loop"]
-        API["REST API\n7 endpoints"]
+        API["REST API\n10 endpoints"]
         RC["Root Cause Engine\nDynamic causal chains"]
     end
 
@@ -95,6 +99,7 @@ NexusLink is a **real-time supply chain data fabric** that:
 ### Inventory Intelligence
 - **Unified truth table**: 8 SKUs across Shopify, Amazon, WMS, and POS with live 5-second updates
 - **Channel discrepancy detection**: Red-highlighted mismatches with per-unit risk calculation
+- **Stockout model overlay**: 7d/14d risk scores plus estimated days-to-stockout per SKU
 - **Velocity sparklines**: 7-day demand trend bars per SKU with up/down indicators
 - **Search, filter, sort**: Full-text search, status filters (critical/warning/ok), sort by risk/name/ATP
 - **Inline causal chains**: Click "Why?" on any discrepant row to see the full Root Cause -> Action flow
@@ -126,12 +131,18 @@ NexusLink is a **real-time supply chain data fabric** that:
 - **Action recommendations**: AI suggests actionable commands (sync_inventory, release_returns, pause_channel)
 - **Suggested prompts**: One-click starter questions for common analyses
 
+### Recommendation Engine
+- **Top-3 ranked next moves**: Returns the highest-impact actions from live discrepancies, stockout risk, returns backlog, and tariff shifts
+- **Scoring dimensions**: `expected_impact`, `urgency`, `confidence`, and aggregate `score`
+- **One-click execution**: Actionable recommendations expose executable commands in the UI
+
 ### Smart Doc Parser
 - **Editable textarea**: Pre-filled with sample supplier email, accepts any document
 - **GPT-4o extraction**: Extracts PO number, supplier, contact, style, quantity, unit cost, ship date, origin, HTS code, factory load
 - **6-point anomaly analysis**: Cost delta, lead time risk, tariff exposure, capacity risk, inventory cross-check, supplier concentration
 - **Severity-tagged findings**: Each anomaly has severity (critical/warning/info), title, detail, financial impact, and actionable recommendation
 - **Cross-referenced intelligence**: Anomalies are checked against live inventory positions, upcoming tariff scenarios, and recent alerts
+- **Supplier risk profiling**: Parsed outputs are converted into a supplier risk score with component breakdown and trend
 
 ### System Health & UX
 - **Health score ring**: Composite 0-100 score in the header (inventory sync + risk exposure + returns flow + alert health)
@@ -306,12 +317,15 @@ npm run dev
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/` | Health check — API status |
-| `GET` | `/inventory` | Full inventory + enriched alerts + connections |
+| `GET` | `/inventory` | Full inventory + enriched alerts + recommendations + supplier risk summary |
 | `GET` | `/api/history` | 7-day hourly historical data per SKU |
 | `GET` | `/api/health` | Composite health score with breakdown |
+| `GET` | `/api/recommendations` | Ranked action recommendations from live state |
+| `GET` | `/api/supplier-risks` | Supplier risk leaderboard from parsed documents |
 | `POST` | `/api/query` | AI query with streaming response |
-| `POST` | `/api/parse` | Document parsing with anomaly analysis |
+| `POST` | `/api/parse` | Document parsing + anomaly analysis + supplier risk update |
 | `POST` | `/api/action` | Execute supply chain action (sync, release, pause) |
+| `POST` | `/api/demo-mode` | Enable/disable deterministic demo mode (pause drift) |
 
 ## Project Structure
 
@@ -361,6 +375,7 @@ nexuslink/
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `OPENAI_API_KEY` | No | OpenAI API key for AI Query and Doc Parser (dashboard works without it) |
+| `VITE_API_BASE_URL` | No | Frontend API base URL (defaults to `http://localhost:8000`) |
 
 ## Design Decisions
 

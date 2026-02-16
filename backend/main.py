@@ -6,9 +6,12 @@ from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 import asyncio
 import copy
+from datetime import datetime, timezone
 import json
+import math
 import os
 import random
+import re
 import time
 load_dotenv()
 
@@ -21,6 +24,8 @@ store = {
     "boot_time": 0,
     "history": {},
     "connections": {},
+    "demo_mode": False,
+    "supplier_risks": {},
 }
 alert_counter = 100
 
@@ -117,6 +122,293 @@ def generate_connections():
         "shipbob": {"status": "connected", "last_sync": now - random.randint(60, 600), "latency_ms": random.randint(100, 350)},
         "pos": {"status": "connected", "last_sync": now - random.randint(15, 180), "latency_ms": random.randint(30, 120)},
     }
+
+
+def clamp(value, low, high):
+    return max(low, min(high, value))
+
+
+def _sigmoid(x):
+    return 1 / (1 + math.exp(-x))
+
+
+def _extract_number(value):
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    match = re.search(r"(\d+(\.\d+)?)", str(value))
+    return float(match.group(1)) if match else None
+
+
+def _days_until(date_str):
+    try:
+        target = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        return max(0, int((target - now).total_seconds() // 86400))
+    except Exception:
+        return None
+
+
+def compute_stockout_forecast(item):
+    """Rule-based stockout probability forecast for 7/14 day horizons."""
+    sku_id = item.get("id")
+    sku_history = store.get("history", {}).get(sku_id, {})
+    vel_series = [p.get("velocity", 0) for p in sku_history.get("daily_velocity", [])]
+    recent_vel = [v for v in vel_series[-3:] if v > 0]
+
+    if recent_vel:
+        daily_demand = sum(recent_vel) / len(recent_vel)
+    else:
+        daily_demand = max(1.0, float(item.get("committed", 0)) / 14.0)
+
+    available = max(0.0, float(item.get("available", 0)))
+    lead_time_days = max(1.0, float(item.get("lead_time_days", 30)))
+    reorder_point = max(1.0, float(item.get("reorder_point", 50)))
+    days_to_stockout = available / max(1.0, daily_demand)
+
+    lead_pressure = _sigmoid((lead_time_days - days_to_stockout) / 6.0)
+
+    def horizon_risk(days):
+        horizon_push = _sigmoid((days - days_to_stockout) / 2.8)
+        base = 0.05 + 0.65 * horizon_push + 0.25 * lead_pressure
+        if available <= reorder_point:
+            base += 0.08
+        return clamp(base, 0.01, 0.99)
+
+    risk_7 = round(horizon_risk(7) * 100, 1)
+    risk_14 = round(horizon_risk(14) * 100, 1)
+    confidence = clamp(0.55 + min(0.3, len(vel_series) * 0.03), 0.55, 0.9)
+
+    return {
+        "daily_demand": round(daily_demand, 2),
+        "days_to_stockout": round(days_to_stockout, 1),
+        "risk_7d": risk_7,
+        "risk_14d": risk_14,
+        "confidence": round(confidence, 2),
+    }
+
+
+def enrich_inventory_with_forecasts(inventory):
+    enriched = []
+    for item in inventory:
+        updated = dict(item)
+        updated["stockout_forecast"] = compute_stockout_forecast(item)
+        enriched.append(updated)
+    return enriched
+
+
+def build_action_recommendations(inventory, returns_data, alerts, tariffs):
+    """Rank top actions by expected impact, urgency, and confidence."""
+    candidates = []
+
+    for item in inventory:
+        systems = item.get("systems", {})
+        forecast = item.get("stockout_forecast", {})
+        max_channel = max(systems.get("shopify", 0), systems.get("amazon", 0))
+        gap = max(0, max_channel - systems.get("wms", 0))
+        risk_value = int(item.get("risk_value", 0))
+
+        if item.get("discrepancy") and risk_value > 0:
+            candidates.append({
+                "kind": "sync",
+                "title": f"Sync {item.get('name', item.get('id'))} to WMS truth",
+                "rationale": f"{gap}-unit listing gap is exposing ${risk_value:,.0f} of annualized risk.",
+                "command": f"sync_inventory:{item.get('id')}",
+                "expected_impact": max(1, risk_value),
+                "urgency": clamp(gap / 30 + risk_value / 50000, 0, 1),
+                "confidence": 0.92,
+                "sku": item.get("id"),
+            })
+
+        risk_7d = forecast.get("risk_7d", 0)
+        if risk_7d >= 55:
+            channel = "shopify" if systems.get("shopify", 0) >= systems.get("amazon", 0) else "amazon"
+            channel_units = int(systems.get(channel, 0))
+            if channel_units <= 0:
+                continue
+            exposure = int((risk_7d / 100) * max(1, item.get("available", 0)) * item.get("unit_cost", 25) * 4)
+            candidates.append({
+                "kind": "pause",
+                "title": f"Pause {channel.title()} listing for {item.get('id')}",
+                "rationale": f"{risk_7d:.1f}% 7-day stockout risk with ~{forecast.get('days_to_stockout', 0)} days of coverage.",
+                "command": f"pause_channel:{channel}:{item.get('id')}",
+                "expected_impact": max(1, exposure),
+                "urgency": clamp(risk_7d / 100, 0, 1),
+                "confidence": 0.78,
+                "sku": item.get("id"),
+            })
+
+    in_limbo = returns_data.get("in_limbo", 0)
+    frozen_value = int(returns_data.get("total_frozen_value", 0))
+    avg_days = returns_data.get("average_days_stuck", 0)
+    if in_limbo > 0 and frozen_value > 0:
+        candidates.append({
+            "kind": "returns",
+            "title": "Release inspected returns to ATP",
+            "rationale": f"{in_limbo} units and ${frozen_value:,.0f} remain frozen for ~{avg_days} days.",
+            "command": "release_returns",
+            "expected_impact": frozen_value,
+            "urgency": clamp(avg_days / 30 + in_limbo / 40, 0, 1),
+            "confidence": 0.88,
+            "sku": None,
+        })
+
+    for tariff in tariffs:
+        current_rate = tariff.get("current_rate", 0)
+        proposed_rate = tariff.get("scenarios", [{}])[0].get("rate", current_rate)
+        delta = proposed_rate - current_rate
+        if delta <= 0:
+            continue
+
+        country = tariff.get("country")
+        affected = [i for i in inventory if i.get("country_of_origin") == country]
+        if not affected:
+            continue
+
+        exposure = 0
+        for item in affected:
+            unit_cost = float(item.get("unit_cost", 25))
+            true_atp = int(item.get("true_atp", 0))
+            exposure += int(true_atp * unit_cost * delta * 4)
+
+        eff_date = tariff.get("scenarios", [{}])[0].get("effective_date")
+        days_to_effective = _days_until(eff_date) if eff_date else None
+        urgency = clamp((1 - (days_to_effective or 30) / 90), 0.2, 1.0)
+        candidates.append({
+            "kind": "tariff",
+            "title": f"Shift sourcing away from {country}",
+            "rationale": f"Tariff delta of {delta * 100:.0f} pts could add ~${exposure:,.0f} annualized landed cost.",
+            "command": None,
+            "expected_impact": max(1, exposure),
+            "urgency": urgency,
+            "confidence": 0.66,
+            "sku": None,
+        })
+
+    if not candidates:
+        return []
+
+    max_impact = max(1, max(c["expected_impact"] for c in candidates))
+    scored = []
+    for c in candidates:
+        impact_component = clamp(c["expected_impact"] / max_impact, 0, 1)
+        score = 100 * (0.5 * impact_component + 0.3 * c["urgency"] + 0.2 * c["confidence"])
+        c["score"] = round(score, 1)
+        c["expected_risk_reduction_usd"] = int(c["expected_impact"])
+        scored.append(c)
+
+    scored.sort(key=lambda x: x["score"], reverse=True)
+    top = scored[:3]
+    for idx, rec in enumerate(top, start=1):
+        rec["rank"] = idx
+    return top
+
+
+def score_supplier_risk(extracted):
+    """Compute supplier risk profile from parsed document and live context."""
+    supplier = str(extracted.get("supplier") or "Unknown Supplier").strip()
+    origin = str(extracted.get("origin") or "Unknown").strip()
+    anomalies = extracted.get("anomalies", []) or []
+
+    severity_weights = {"critical": 20, "warning": 12, "info": 5}
+    severity_score = 0
+    counts = {"critical": 0, "warning": 0, "info": 0}
+    for anomaly in anomalies:
+        if not isinstance(anomaly, dict):
+            counts["warning"] += 1
+            severity_score += severity_weights["warning"]
+            continue
+        sev = str(anomaly.get("severity", "info")).lower()
+        if sev not in counts:
+            sev = "info"
+        counts[sev] += 1
+        severity_score += severity_weights[sev]
+    severity_score = clamp(severity_score, 0, 65)
+
+    factory_load = _extract_number(extracted.get("factory_load"))
+    capacity_score = 0
+    if factory_load is not None and factory_load > 80:
+        capacity_score = clamp((factory_load - 80) * 0.8, 0, 15)
+
+    tariffs = store.get("data", {}).get("tariffs", [])
+    tariff_score = 0
+    tariff_delta = 0
+    for tariff in tariffs:
+        country = str(tariff.get("country", "")).lower()
+        if country and country in origin.lower():
+            current = tariff.get("current_rate", 0)
+            proposed = tariff.get("scenarios", [{}])[0].get("rate", current)
+            tariff_delta = max(0, (proposed - current) * 100)
+            tariff_score = clamp(tariff_delta, 0, 12)
+            break
+
+    same_origin_count = len([
+        item for item in store.get("data", {}).get("inventory", [])
+        if str(item.get("country_of_origin", "")).lower() in origin.lower()
+    ])
+    concentration_score = clamp(same_origin_count * 2, 0, 8)
+
+    total_score = round(clamp(severity_score + capacity_score + tariff_score + concentration_score, 0, 100), 1)
+    confidence = round(clamp(0.55 + min(0.25, len(anomalies) * 0.05) + (0.08 if factory_load else 0), 0.55, 0.92), 2)
+
+    return {
+        "supplier": supplier,
+        "origin": origin,
+        "po_number": extracted.get("po_number"),
+        "score": total_score,
+        "confidence": confidence,
+        "components": {
+            "severity": round(severity_score, 1),
+            "capacity": round(capacity_score, 1),
+            "tariff": round(tariff_score, 1),
+            "concentration": round(concentration_score, 1),
+            "tariff_delta_pts": round(tariff_delta, 1),
+        },
+        "severity_counts": counts,
+        "updated_at": int(time.time()),
+    }
+
+
+def upsert_supplier_risk(profile):
+    supplier = profile.get("supplier", "Unknown Supplier")
+    store["supplier_risks"].setdefault(supplier, {"latest": None, "history": []})
+    current = store["supplier_risks"][supplier]
+    prev = current.get("latest")
+    prev_score = prev.get("score") if prev else None
+    if prev_score is None:
+        trend = "new"
+    elif profile["score"] > prev_score + 3:
+        trend = "up"
+    elif profile["score"] < prev_score - 3:
+        trend = "down"
+    else:
+        trend = "flat"
+
+    next_profile = dict(profile)
+    next_profile["trend"] = trend
+    current["history"].append(next_profile)
+    current["history"] = current["history"][-10:]
+    current["latest"] = next_profile
+    return {"supplier": supplier, "latest": next_profile, "history": current["history"]}
+
+
+def supplier_risk_leaderboard():
+    board = []
+    for supplier, payload in store.get("supplier_risks", {}).items():
+        latest = payload.get("latest")
+        if latest:
+            board.append({
+                "supplier": supplier,
+                "score": latest.get("score", 0),
+                "trend": latest.get("trend", "flat"),
+                "confidence": latest.get("confidence", 0),
+                "origin": latest.get("origin", "Unknown"),
+                "updated_at": latest.get("updated_at", 0),
+                "history_points": len(payload.get("history", [])),
+            })
+    board.sort(key=lambda x: x["score"], reverse=True)
+    return board
 
 
 # ── Dynamic root cause generation ──────────────────────────────────────
@@ -239,6 +531,9 @@ def simulate_tick():
     data = store["data"]
     if not data or "inventory" not in data:
         return
+    if store.get("demo_mode"):
+        store["last_update"] = time.time()
+        return
 
     for item in data["inventory"]:
         sys = item["systems"]
@@ -328,6 +623,8 @@ async def lifespan(app: FastAPI):
     store["last_update"] = time.time()
     store["history"] = generate_history(seed.get("inventory", []))
     store["connections"] = generate_connections()
+    store["demo_mode"] = False
+    store["supplier_risks"] = {}
 
     task = asyncio.create_task(simulation_loop())
     yield
@@ -385,6 +682,7 @@ async def get_inventory():
     data = store["data"]
     if not data:
         return {"error": "Data model not yet initialized"}
+    inventory = enrich_inventory_with_forecasts(data.get("inventory", []))
 
     # Enrich alerts with root cause data
     enriched_alerts = []
@@ -395,11 +693,21 @@ async def get_inventory():
             a["root_cause"] = rc
         enriched_alerts.append(a)
 
+    recommendations = build_action_recommendations(
+        inventory=inventory,
+        returns_data=data.get("returns", {}),
+        alerts=enriched_alerts,
+        tariffs=data.get("tariffs", []),
+    )
+
     return {
-        "inventory": data.get("inventory", []),
+        "inventory": inventory,
         "tariffs": data.get("tariffs", []),
         "returns": data.get("returns", {}),
         "alerts": enriched_alerts,
+        "recommendations": recommendations,
+        "supplier_risks": supplier_risk_leaderboard(),
+        "demo_mode": bool(store.get("demo_mode")),
         "connections": store["connections"],
         "last_update": store["last_update"],
         "uptime": round(time.time() - store["boot_time"]),
@@ -421,7 +729,6 @@ async def get_health():
 
     inventory = data.get("inventory", [])
     returns = data.get("returns", {})
-    tariffs = data.get("tariffs", [])
     alerts = store["alerts"]
 
     # Discrepancy score: fewer discrepancies = higher score (0-25)
@@ -453,6 +760,52 @@ async def get_health():
             "returns_flow": round(returns_score),
             "alert_health": round(alert_score),
         }
+    }
+
+
+@app.get("/api/recommendations")
+async def get_recommendations():
+    data = store.get("data", {})
+    inventory = enrich_inventory_with_forecasts(data.get("inventory", []))
+    recommendations = build_action_recommendations(
+        inventory=inventory,
+        returns_data=data.get("returns", {}),
+        alerts=store.get("alerts", []),
+        tariffs=data.get("tariffs", []),
+    )
+    return {
+        "generated_at": int(time.time()),
+        "demo_mode": bool(store.get("demo_mode")),
+        "recommendations": recommendations,
+    }
+
+
+@app.get("/api/supplier-risks")
+async def get_supplier_risks():
+    leaderboard = supplier_risk_leaderboard()
+    return {
+        "total_suppliers": len(leaderboard),
+        "suppliers": leaderboard,
+    }
+
+
+@app.post("/api/demo-mode")
+async def set_demo_mode(payload: dict):
+    raw_enabled = payload.get("enabled", False)
+    if isinstance(raw_enabled, bool):
+        enabled = raw_enabled
+    else:
+        enabled = str(raw_enabled).strip().lower() in ("1", "true", "yes", "on")
+
+    store["demo_mode"] = enabled
+    if not enabled:
+        # Trigger one immediate tick so users can see drift resume right away.
+        simulate_tick()
+    store["last_update"] = time.time()
+    return {
+        "status": "success",
+        "demo_mode": enabled,
+        "message": "Demo mode enabled — simulation drift paused" if enabled else "Demo mode disabled — live simulation resumed",
     }
 
 
@@ -576,7 +929,9 @@ RECENT ALERTS:
                         for a in parsed["anomalies"]
                     ]
 
-            return {"status": "success", "extracted": parsed}
+            profile = score_supplier_risk(parsed)
+            supplier_risk = upsert_supplier_risk(profile)
+            return {"status": "success", "extracted": parsed, "supplier_risk": supplier_risk}
         except (ValueError, json.JSONDecodeError):
             return {"status": "success", "extracted": {"raw": response_text}}
 
@@ -622,7 +977,9 @@ async def execute_action(payload: dict):
                 "sku": sku_id,
                 "time": "just now",
             })
+            store["last_update"] = time.time()
             return {"status": "success", "message": f"Synced: {', '.join(synced)}"}
+        store["last_update"] = time.time()
         return {"status": "no_change", "message": "No discrepancies to sync"}
 
     if action == "release_returns":
@@ -643,6 +1000,7 @@ async def execute_action(payload: dict):
             "sku": None,
             "time": "just now",
         })
+        store["last_update"] = time.time()
         return {"status": "success", "message": f"Released ${released_value:,} in returns"}
 
     if action.startswith("pause_channel"):
@@ -655,6 +1013,9 @@ async def execute_action(payload: dict):
         for item in data["inventory"]:
             if item["id"] == sku_id and channel in item["systems"]:
                 old_val = item["systems"][channel]
+                if old_val <= 0:
+                    store["last_update"] = time.time()
+                    return {"status": "no_change", "message": f"{item['name']} already paused on {channel}"}
                 item["systems"][channel] = 0
 
                 alert_counter += 1
@@ -667,6 +1028,7 @@ async def execute_action(payload: dict):
                     "sku": sku_id,
                     "time": "just now",
                 })
+                store["last_update"] = time.time()
                 return {"status": "success", "message": f"Paused {item['name']} on {channel}"}
 
         return {"error": f"SKU {sku_id} or channel {channel} not found"}
