@@ -2,54 +2,53 @@ import React from 'react';
 
 const InventoryTable = ({ inventory }) => {
     return (
-        <div className="overflow-hidden rounded-xl border border-white/5 bg-white/5 backdrop-blur-sm">
+        <div className="rounded-xl border border-white/[0.06] bg-slate-800/50 overflow-hidden">
             <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left">
                     <thead>
-                        <tr className="bg-white/5 text-slate-400 text-xs font-semibold uppercase tracking-wider">
-                            <th className="px-6 py-4">SKU / Item</th>
-                            <th className="px-6 py-4">Shopify</th>
-                            <th className="px-6 py-4">Amazon</th>
-                            <th className="px-6 py-4">WMS</th>
-                            <th className="px-6 py-4">POS</th>
-                            <th className="px-6 py-4 text-nexus-accent font-bold">True ATP</th>
-                            <th className="px-6 py-4 text-right pr-10">Risk Value</th>
+                        <tr className="border-b border-white/[0.06] text-xs text-slate-400">
+                            <th className="px-5 py-3.5 font-medium">Item</th>
+                            <th className="px-5 py-3.5 font-medium">Shopify</th>
+                            <th className="px-5 py-3.5 font-medium">Amazon</th>
+                            <th className="px-5 py-3.5 font-medium">WMS</th>
+                            <th className="px-5 py-3.5 font-medium">POS</th>
+                            <th className="px-5 py-3.5 font-medium text-white">True ATP</th>
+                            <th className="px-5 py-3.5 font-medium text-right">Risk Exposure</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
-                        {inventory.map((item) => (
+                    <tbody>
+                        {inventory.map((item, i) => (
                             <tr
                                 key={item.id}
-                                className={`group transition-colors hover:bg-white/5 ${item.discrepancy ? 'bg-nexus-danger/5' : ''}`}
+                                className="group border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors"
                             >
-                                <td className="px-6 py-4">
+                                <td className="px-5 py-3.5">
                                     <div className="flex flex-col">
-                                        <span className="text-sm font-bold text-white group-hover:text-nexus-accent transition-colors">
+                                        <span className={`text-sm font-medium ${item.discrepancy ? 'text-white' : 'text-slate-300'}`}>
                                             {item.name}
                                         </span>
-                                        <span className="text-[10px] text-slate-500 uppercase tracking-tighter">
-                                            {item.id} • {item.category}
+                                        <span className="text-xs text-slate-500 font-mono">
+                                            {item.id}
                                         </span>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 text-sm text-slate-300 font-mono">{item.systems.shopify}</td>
-                                <td className="px-6 py-4 text-sm text-slate-300 font-mono">{item.systems.amazon}</td>
-                                <td className="px-6 py-4 text-sm text-slate-300 font-mono">{item.systems.wms}</td>
-                                <td className="px-6 py-4 text-sm text-slate-300 font-mono">{item.systems.pos}</td>
-                                <td className="px-6 py-4">
-                                    <span className={`text-sm font-bold px-2 py-0.5 rounded ${item.discrepancy ? 'text-nexus-danger' : 'text-nexus-success'}`}>
+                                <td className="px-5 py-3.5 text-sm text-slate-400 font-mono tabular-nums">{item.systems.shopify}</td>
+                                <td className="px-5 py-3.5 text-sm text-slate-400 font-mono tabular-nums">{item.systems.amazon}</td>
+                                <td className="px-5 py-3.5 text-sm text-slate-400 font-mono tabular-nums">{item.systems.wms}</td>
+                                <td className="px-5 py-3.5 text-sm text-slate-400 font-mono tabular-nums">{item.systems.pos}</td>
+                                <td className="px-5 py-3.5">
+                                    <span className={`text-sm font-semibold ${item.discrepancy ? 'text-orange-400' : 'text-emerald-400'}`}>
                                         {item.true_atp}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4 text-right pr-10">
-                                    <div className="flex flex-col items-end">
-                                        <span className={`text-sm font-bold ${item.discrepancy ? 'text-nexus-danger' : 'text-slate-500'}`}>
-                                            {item.risk_value > 0 ? `$${(item.risk_value / 1000).toFixed(1)}K` : '—'}
+                                <td className="px-5 py-3.5 text-right">
+                                    {item.risk_value > 0 ? (
+                                        <span className="inline-flex text-xs font-medium text-red-400 bg-red-400/10 px-2.5 py-1 rounded-full border border-red-400/10">
+                                            ${(item.risk_value / 1000).toFixed(1)}k
                                         </span>
-                                        {item.discrepancy && (
-                                            <span className="text-[10px] text-nexus-danger uppercase font-bold animate-pulse">Out of Sync</span>
-                                        )}
-                                    </div>
+                                    ) : (
+                                        <span className="text-slate-600">&mdash;</span>
+                                    )}
                                 </td>
                             </tr>
                         ))}

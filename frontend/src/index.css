@@ -3,11 +3,58 @@
 @tailwind utilities;
 
 :root {
-  background-color: #0f172a;
+  background-color: #0B1120;
   color: white;
 }
 
 body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer utilities {
+  .animate-scan-line {
+    animation: scan 3s infinite linear;
+  }
+
+  .card {
+    @apply bg-slate-800/50 border border-white/[0.06] rounded-xl;
+  }
+
+  .card-hover {
+    @apply card hover:border-white/10 transition-colors;
+  }
+}
+
+@keyframes scan {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(100%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }

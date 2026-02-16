@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+backend/.venv/
+*.egg
+dist/
+build/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build output
+frontend/dist/
+
+# Vite cache
+frontend/node_modules/.vite/
+
+# Logs
+*.log
+npm-debug.log*
+
+# GSD / Agent / Gemini
+.gsd/
+.agent/
+.gemini/
+
+# OS
+Thumbs.db

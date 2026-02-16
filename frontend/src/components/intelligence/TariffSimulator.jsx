@@ -10,7 +10,7 @@ const TariffSimulator = ({ inventory, tariffs }) => {
     const calculateImpact = () => {
         return affectedItems.reduce((acc, item) => {
             const currentRate = countryTariff.current_rate;
-            const currentCost = item.risk_value; // Simplification: using risk_value as a proxy for cost
+            const currentCost = item.risk_value;
             const additionalCost = currentCost * (newRate - currentRate);
             return acc + additionalCost;
         }, 0);
@@ -19,16 +19,17 @@ const TariffSimulator = ({ inventory, tariffs }) => {
     const totalImpact = calculateImpact();
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div className="p-8 rounded-2xl border border-white/5 bg-white/5 backdrop-blur-xl">
-                <h2 className="text-xl font-black text-white mb-6 uppercase tracking-tight flex items-center gap-2">
-                    <span className="w-2 h-6 bg-nexus-accent rounded-full"></span>
+        <div className="space-y-6">
+            {/* Controls */}
+            <div className="p-6 rounded-xl bg-slate-800/50 border border-white/[0.06]">
+                <h2 className="text-base font-semibold text-white mb-5 flex items-center gap-2.5">
+                    <span className="w-1.5 h-5 bg-nexus-accent rounded-full"></span>
                     Geopolitical Tariff Simulator
                 </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-end">
-                    <div className="space-y-4">
-                        <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Origin Country</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                    <div className="space-y-2">
+                        <label className="text-xs font-medium text-slate-400">Origin Country</label>
                         <select
                             value={selectedCountry}
                             onChange={(e) => {
@@ -37,7 +38,7 @@ const TariffSimulator = ({ inventory, tariffs }) => {
                                 const t = tariffs.find(tar => tar.country === country);
                                 setNewRate(t.scenarios[0].rate);
                             }}
-                            className="w-full bg-nexus-dark border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-nexus-accent outline-none transition-all cursor-pointer"
+                            className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-nexus-accent focus:ring-1 focus:ring-nexus-accent/30 outline-none transition-all cursor-pointer"
                         >
                             {tariffs.map(t => (
                                 <option key={t.country} value={t.country}>{t.country}</option>
@@ -45,10 +46,10 @@ const TariffSimulator = ({ inventory, tariffs }) => {
                         </select>
                     </div>
 
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-end">
-                            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Projected Tariff Rate</label>
-                            <span className="text-2xl font-black text-nexus-accent">{(newRate * 100).toFixed(0)}%</span>
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                            <label className="text-xs font-medium text-slate-400">Projected Tariff Rate</label>
+                            <span className="text-xl font-bold text-nexus-accent tabular-nums">{(newRate * 100).toFixed(0)}%</span>
                         </div>
                         <input
                             type="range"
@@ -57,59 +58,69 @@ const TariffSimulator = ({ inventory, tariffs }) => {
                             step="0.01"
                             value={newRate}
                             onChange={(e) => setNewRate(parseFloat(e.target.value))}
-                            className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-nexus-accent"
+                            className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-nexus-accent"
                         />
                     </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 overflow-hidden rounded-2xl border border-white/5 bg-white/5">
+            {/* Results */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 overflow-hidden rounded-xl border border-white/[0.06] bg-slate-800/50">
                     <table className="w-full text-left">
-                        <thead className="bg-white/5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                        <thead className="bg-slate-900/50 text-xs text-slate-400">
                             <tr>
-                                <th className="px-6 py-4">Effected SKU</th>
-                                <th className="px-6 py-4">Current Rate</th>
-                                <th className="px-6 py-4 text-nexus-danger">Simulated Rate</th>
-                                <th className="px-6 py-4 text-right">Annual Impact</th>
+                                <th className="px-5 py-3.5 font-medium">Affected SKU</th>
+                                <th className="px-5 py-3.5 font-medium">Current Rate</th>
+                                <th className="px-5 py-3.5 font-medium text-red-400">Simulated Rate</th>
+                                <th className="px-5 py-3.5 font-medium text-right">Annual Impact</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody className="divide-y divide-white/[0.04]">
                             {affectedItems.map(item => (
-                                <tr key={item.id} className="hover:bg-white/5 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <span className="text-sm font-bold text-white">{item.name}</span>
+                                <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
+                                    <td className="px-5 py-3.5">
+                                        <span className="text-sm font-medium text-white">{item.name}</span>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-slate-400">{(countryTariff.current_rate * 100).toFixed(0)}%</td>
-                                    <td className="px-6 py-4 text-sm text-nexus-danger font-bold">{(newRate * 100).toFixed(0)}%</td>
-                                    <td className="px-6 py-4 text-right">
-                                        <span className="text-sm font-bold text-nexus-danger">
+                                    <td className="px-5 py-3.5 text-sm text-slate-400 tabular-nums">{(countryTariff.current_rate * 100).toFixed(0)}%</td>
+                                    <td className="px-5 py-3.5 text-sm text-red-400 font-medium tabular-nums">{(newRate * 100).toFixed(0)}%</td>
+                                    <td className="px-5 py-3.5 text-right">
+                                        <span className="text-sm font-medium text-red-400 tabular-nums">
                                             +${(item.risk_value * (newRate - countryTariff.current_rate) / 1000).toFixed(1)}K
                                         </span>
                                     </td>
                                 </tr>
                             ))}
+                            {affectedItems.length === 0 && (
+                                <tr>
+                                    <td colSpan={4} className="px-5 py-8 text-center text-sm text-slate-500">
+                                        No affected SKUs for this country
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
 
-                <div className="space-y-6">
-                    <div className="p-6 rounded-2xl border border-nexus-danger/20 bg-nexus-danger/5 backdrop-blur-sm">
-                        <span className="text-[10px] font-bold uppercase text-nexus-danger/60 mb-1 block tracking-widest">Total Projected Exposure</span>
-                        <div className="text-4xl font-black text-nexus-danger mb-1">${(totalImpact / 1000).toFixed(1)}K</div>
+                <div className="space-y-4">
+                    {/* Total exposure */}
+                    <div className="p-5 rounded-xl border border-red-400/15 bg-red-400/5">
+                        <span className="text-xs font-medium text-red-400/70 block mb-1">Total Projected Exposure</span>
+                        <div className="text-3xl font-bold text-red-400 tabular-nums mb-1">${(totalImpact / 1000).toFixed(1)}K</div>
                         <p className="text-xs text-slate-500">Calculated over annual inventory volume</p>
                     </div>
 
-                    <div className="p-6 rounded-2xl border border-nexus-success/20 bg-nexus-success/5 backdrop-blur-sm border-dashed">
-                        <div className="flex items-center gap-2 mb-4 text-nexus-success">
-                            <span className="text-[10px] font-black uppercase tracking-widest bg-nexus-success/20 px-2 py-0.5 rounded">Recommendation</span>
+                    {/* Recommendation */}
+                    <div className="p-5 rounded-xl border border-emerald-400/15 bg-emerald-400/5">
+                        <div className="flex items-center gap-2 mb-3">
+                            <span className="text-xs font-semibold text-emerald-400 bg-emerald-400/15 px-2 py-0.5 rounded">Recommendation</span>
                         </div>
-                        <p className="text-sm text-slate-200 font-medium mb-4">
-                            Shift 23% of {selectedCountry} production to <span className="text-nexus-success font-bold">Monterrey, Mexico</span> (0% Tariff) to mitigate exposure.
+                        <p className="text-sm text-slate-300 leading-relaxed mb-4">
+                            Shift 23% of {selectedCountry} production to <span className="text-emerald-400 font-semibold">Monterrey, Mexico</span> (0% Tariff) to mitigate exposure.
                         </p>
-                        <div className="flex justify-between items-end border-t border-nexus-success/10 pt-4">
-                            <span className="text-xs text-slate-500 font-bold uppercase">Estimated Saving</span>
-                            <span className="text-lg font-black text-nexus-success">${((totalImpact * 0.23) / 1000).toFixed(1)}K</span>
+                        <div className="flex justify-between items-center border-t border-emerald-400/10 pt-3">
+                            <span className="text-xs text-slate-500 font-medium">Estimated Saving</span>
+                            <span className="text-lg font-bold text-emerald-400 tabular-nums">${((totalImpact * 0.23) / 1000).toFixed(1)}K</span>
                         </div>
                     </div>
                 </div>

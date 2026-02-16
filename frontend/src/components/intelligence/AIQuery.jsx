@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 const AIQuery = () => {
     const [query, setQuery] = useState('');
     const [messages, setMessages] = useState([
-        { role: 'assistant', text: 'NexusLink Intel Activated. How can I analyze the data fabric for you today?', status: 'online' }
+        { role: 'assistant', text: 'NexusLink Intel activated. Ask me anything about your inventory, tariffs, or returns.' }
     ]);
     const [isTyping, setIsTyping] = useState(false);
+    const messagesEndRef = useRef(null);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages, isTyping]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -15,7 +20,6 @@ const AIQuery = () => {
         setQuery('');
         setIsTyping(true);
 
-        // Mocking AI response for demo purposes (Phase 3.2 logic)
         setTimeout(() => {
             let response = "I've analyzed the current data fabric. How else can I help?";
 
@@ -27,68 +31,66 @@ const AIQuery = () => {
                 response = "There are 15 entries in 'Limbo' status. Total frozen value is $40.8K, with an average stuck time of 24 days. Would you like me to initiate inspection workflows?";
             }
 
-            setMessages(prev => [...prev, { role: 'assistant', text: response, status: 'synced' }]);
+            setMessages(prev => [...prev, { role: 'assistant', text: response }]);
             setIsTyping(false);
         }, 1500);
     };
 
     return (
-        <div className="flex flex-col h-[600px] max-w-4xl mx-auto rounded-3xl border border-white/5 bg-white/5 backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div className="flex items-center justify-between px-8 py-6 border-b border-white/5 bg-white/5">
+        <div className="flex flex-col h-[calc(100vh-10rem)] max-w-3xl mx-auto rounded-xl border border-white/[0.06] bg-slate-800/50 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-slate-900/50">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-nexus-accent flex items-center justify-center">
-                        <div className="w-2 h-2 bg-nexus-dark rounded-full animate-ping"></div>
+                    <div className="w-8 h-8 rounded-lg bg-nexus-accent/15 flex items-center justify-center">
+                        <div className="w-2 h-2 bg-nexus-accent rounded-full animate-pulse"></div>
                     </div>
                     <div>
-                        <h3 className="text-sm font-black uppercase tracking-widest text-white">NexusLink Intel</h3>
-                        <span className="text-[10px] text-nexus-accent uppercase font-bold tracking-tighter">Connected to True Data Fabric</span>
+                        <h3 className="text-sm font-semibold text-white">NexusLink Intel</h3>
+                        <span className="text-xs text-nexus-accent/70">Connected to Data Fabric</span>
                     </div>
                 </div>
-                <div className="px-3 py-1 rounded-full bg-nexus-accent/10 border border-nexus-accent/20 text-[10px] font-bold text-nexus-accent uppercase tracking-widest">
-                    V1.0 GPT-4o
+                <div className="px-2.5 py-1 rounded-md bg-slate-700/50 border border-white/[0.06] text-xs text-slate-400">
+                    GPT-4o
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-8 space-y-6">
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 {messages.map((msg, i) => (
                     <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[80%] p-4 rounded-2xl text-sm ${msg.role === 'user'
-                                ? 'bg-nexus-accent text-nexus-dark font-bold rounded-tr-none shadow-[0_0_20px_rgba(56,189,248,0.3)]'
-                                : 'bg-white/5 border border-white/10 text-slate-200 rounded-tl-none font-medium'
+                        <div className={`max-w-[75%] px-4 py-3 text-sm leading-relaxed ${msg.role === 'user'
+                                ? 'bg-nexus-accent text-slate-900 font-medium rounded-2xl rounded-br-md'
+                                : 'bg-slate-700/50 border border-white/[0.06] text-slate-200 rounded-2xl rounded-bl-md'
                             }`}>
                             {msg.text}
-                            {msg.status && (
-                                <div className="text-[8px] mt-2 opacity-40 uppercase tracking-widest flex items-center gap-1">
-                                    <div className={`w-1 h-1 rounded-full ${msg.status === 'online' ? 'bg-nexus-success' : 'bg-nexus-accent'}`}></div>
-                                    {msg.status}
-                                </div>
-                            )}
                         </div>
                     </div>
                 ))}
                 {isTyping && (
                     <div className="flex justify-start">
-                        <div className="bg-white/5 border border-white/10 p-4 rounded-2xl rounded-tl-none flex gap-1">
-                            <div className="w-1.5 h-1.5 bg-nexus-accent rounded-full animate-bounce"></div>
-                            <div className="w-1.5 h-1.5 bg-nexus-accent rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                            <div className="w-1.5 h-1.5 bg-nexus-accent rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                        <div className="bg-slate-700/50 border border-white/[0.06] px-4 py-3 rounded-2xl rounded-bl-md flex gap-1.5 items-center">
+                            <div className="w-1.5 h-1.5 bg-nexus-accent/60 rounded-full animate-bounce"></div>
+                            <div className="w-1.5 h-1.5 bg-nexus-accent/60 rounded-full animate-bounce [animation-delay:150ms]"></div>
+                            <div className="w-1.5 h-1.5 bg-nexus-accent/60 rounded-full animate-bounce [animation-delay:300ms]"></div>
                         </div>
                     </div>
                 )}
+                <div ref={messagesEndRef} />
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 bg-white/5 border-t border-white/5">
-                <div className="relative">
+            {/* Input */}
+            <form onSubmit={handleSubmit} className="p-4 border-t border-white/[0.06] bg-slate-900/30">
+                <div className="flex gap-3">
                     <input
                         type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Ask anything about inventory, tariffs, or returns..."
-                        className="w-full bg-nexus-dark/50 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:border-nexus-accent outline-none transition-all placeholder:text-slate-600 pr-16"
+                        placeholder="Ask about inventory, tariffs, or returns..."
+                        className="flex-1 bg-slate-800 border border-white/[0.08] rounded-lg px-4 py-3 text-sm text-white focus:border-nexus-accent focus:ring-1 focus:ring-nexus-accent/30 outline-none transition-all placeholder:text-slate-500"
                     />
                     <button
                         type="submit"
-                        className="absolute right-3 top-3 bottom-3 px-4 bg-nexus-accent text-nexus-dark font-black text-xs uppercase rounded-xl hover:scale-105 transition-transform"
+                        className="px-5 py-3 bg-nexus-accent text-slate-900 font-semibold text-sm rounded-lg hover:bg-nexus-accent/90 transition-colors"
                     >
                         Send
                     </button>

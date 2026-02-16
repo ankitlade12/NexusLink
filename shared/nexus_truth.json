@@ -4,49 +4,121 @@
             "id": "SKU-101",
             "name": "Alpine Ridge Jacket",
             "category": "Outerwear",
-            "systems": {
-                "shopify": 342,
-                "amazon": 210,
-                "wms": 289,
-                "pos": 45
-            },
+            "systems": { "shopify": 342, "amazon": 210, "wms": 289, "pos": 45 },
             "true_atp": 289,
+            "committed": 187,
+            "available": 102,
             "discrepancy": true,
             "risk_value": 31200,
             "country_of_origin": "Vietnam",
-            "lead_time_days": 45
+            "lead_time_days": 45,
+            "reorder_point": 150,
+            "unit_cost": 28.40
         },
         {
             "id": "SKU-102",
             "name": "Summit Series Tent",
             "category": "Equipment",
-            "systems": {
-                "shopify": 120,
-                "amazon": 85,
-                "wms": 120,
-                "pos": 10
-            },
+            "systems": { "shopify": 120, "amazon": 85, "wms": 120, "pos": 10 },
             "true_atp": 120,
+            "committed": 45,
+            "available": 75,
             "discrepancy": false,
             "risk_value": 0,
             "country_of_origin": "China",
-            "lead_time_days": 60
+            "lead_time_days": 60,
+            "reorder_point": 40,
+            "unit_cost": 84.50
         },
         {
             "id": "SKU-103",
             "name": "Glacier Trail Pack",
             "category": "Packs",
-            "systems": {
-                "shopify": 540,
-                "amazon": 420,
-                "wms": 480,
-                "pos": 60
-            },
+            "systems": { "shopify": 540, "amazon": 420, "wms": 480, "pos": 60 },
             "true_atp": 480,
+            "committed": 168,
+            "available": 312,
             "discrepancy": true,
             "risk_value": 12500,
             "country_of_origin": "Vietnam",
-            "lead_time_days": 35
+            "lead_time_days": 35,
+            "reorder_point": 200,
+            "unit_cost": 22.10
+        },
+        {
+            "id": "SKU-104",
+            "name": "Basecamp Rain Shell",
+            "category": "Outerwear",
+            "systems": { "shopify": 200, "amazon": 180, "wms": 195, "pos": 25 },
+            "true_atp": 195,
+            "committed": 90,
+            "available": 105,
+            "discrepancy": true,
+            "risk_value": 2800,
+            "country_of_origin": "Vietnam",
+            "lead_time_days": 40,
+            "reorder_point": 80,
+            "unit_cost": 19.60
+        },
+        {
+            "id": "SKU-105",
+            "name": "Trailhead Puffer Vest",
+            "category": "Outerwear",
+            "systems": { "shopify": 88, "amazon": 92, "wms": 88, "pos": 12 },
+            "true_atp": 88,
+            "committed": 30,
+            "available": 58,
+            "discrepancy": false,
+            "risk_value": 0,
+            "country_of_origin": "China",
+            "lead_time_days": 50,
+            "reorder_point": 60,
+            "unit_cost": 32.80
+        },
+        {
+            "id": "SKU-106",
+            "name": "Windbreaker Pro",
+            "category": "Outerwear",
+            "systems": { "shopify": 150, "amazon": 145, "wms": 148, "pos": 18 },
+            "true_atp": 148,
+            "committed": 60,
+            "available": 88,
+            "discrepancy": true,
+            "risk_value": 1400,
+            "country_of_origin": "Mexico",
+            "lead_time_days": 18,
+            "reorder_point": 70,
+            "unit_cost": 15.40
+        },
+        {
+            "id": "SKU-107",
+            "name": "Summit Sleeping Bag",
+            "category": "Equipment",
+            "systems": { "shopify": 65, "amazon": 58, "wms": 62, "pos": 8 },
+            "true_atp": 62,
+            "committed": 40,
+            "available": 22,
+            "discrepancy": true,
+            "risk_value": 3200,
+            "country_of_origin": "China",
+            "lead_time_days": 55,
+            "reorder_point": 30,
+            "unit_cost": 45.20
+        },
+        {
+            "id": "SKU-108",
+            "name": "Ridgeline Hiking Boot",
+            "category": "Footwear",
+            "systems": { "shopify": 310, "amazon": 290, "wms": 305, "pos": 35 },
+            "true_atp": 305,
+            "committed": 180,
+            "available": 125,
+            "discrepancy": true,
+            "risk_value": 4800,
+            "country_of_origin": "Vietnam",
+            "lead_time_days": 42,
+            "reorder_point": 120,
+            "unit_cost": 38.90
         }
     ],
     "tariffs": [
@@ -54,55 +126,41 @@
             "country": "Vietnam",
             "current_rate": 0.15,
             "scenarios": [
-                {
-                    "name": "Geopolitical Spike",
-                    "rate": 0.32,
-                    "effective_date": "2026-05-01"
-                }
+                { "name": "Geopolitical Spike", "rate": 0.32, "effective_date": "2026-05-01" }
             ]
         },
         {
             "country": "China",
             "current_rate": 0.25,
             "scenarios": [
-                {
-                    "name": "Trade War 2.0",
-                    "rate": 0.45,
-                    "effective_date": "2026-06-15"
-                }
+                { "name": "Trade War 2.0", "rate": 0.45, "effective_date": "2026-06-15" }
             ]
         },
         {
             "country": "Mexico",
             "current_rate": 0.0,
             "scenarios": [
-                {
-                    "name": "USMCA Review",
-                    "rate": 0.05,
-                    "effective_date": "2026-09-01"
-                }
+                { "name": "USMCA Review", "rate": 0.05, "effective_date": "2026-09-01" }
             ]
         }
     ],
     "returns": {
         "in_limbo": 15,
         "total_frozen_value": 40800,
-        "average_days_stuck": 24
+        "average_days_stuck": 24,
+        "items": [
+            { "id": "RET-882", "sku": "SKU-101", "qty": 96, "value": 12400, "days": 32, "reason": "Carrier Damaged", "grade": "B" },
+            { "id": "RET-901", "sku": "SKU-103", "qty": 180, "value": 8200, "days": 18, "reason": "Wrong Item Shipped", "grade": "pending" },
+            { "id": "RET-944", "sku": "SKU-105", "qty": 44, "value": 20200, "days": 41, "reason": "Quality Issue", "grade": "C" }
+        ]
     },
     "alerts": [
-        {
-            "id": "A1",
-            "type": "CRITICAL",
-            "message": "Alpine Ridge Jacket oversold by 103 units across channels",
-            "risk": 31200,
-            "action": "Reallocate from REI Wholesale batch"
-        },
-        {
-            "id": "A2",
-            "type": "WARNING",
-            "message": "Vietnam tariff increase effective in 87 days — $2.75M exposure",
-            "risk": 2750000,
-            "action": "View Relocation Plan"
-        }
+        { "id": "A1", "type": "CRITICAL", "message": "Alpine Ridge Jacket oversold by 53 units — Shopify (342) vs WMS (289)", "risk": 31200, "action": "sync_inventory", "sku": "SKU-101", "time": "2m ago" },
+        { "id": "A2", "type": "WARNING", "message": "Vietnam tariff increase to 32% effective in 87 days — $2.75M exposure", "risk": 2750000, "action": "view_tariffs", "sku": null, "time": "14m ago" },
+        { "id": "A3", "type": "CRITICAL", "message": "TikTok spike: Alpine Ridge Jacket — 160 orders in 6hrs, 3.2x normal velocity", "risk": 19200, "action": null, "sku": "SKU-101", "time": "45m ago" },
+        { "id": "A4", "type": "WARNING", "message": "Returns backlog: 180 units awaiting inspection at ShipBob for 18+ days", "risk": 40800, "action": "release_returns", "sku": null, "time": "3h ago" },
+        { "id": "A5", "type": "WARNING", "message": "Glacier Trail Pack: 60-unit gap between Shopify (540) and WMS (480)", "risk": 12500, "action": "sync_inventory", "sku": "SKU-103", "time": "1h ago" },
+        { "id": "A6", "type": "INFO", "message": "Container VN-4421 cleared customs — 2,500 Alpine Ridge Jackets arriving in 3 days", "risk": 0, "action": null, "sku": "SKU-101", "time": "2h ago" },
+        { "id": "A7", "type": "WARNING", "message": "Summit Sleeping Bag approaching reorder point — 22 available vs 30 threshold", "risk": 3200, "action": null, "sku": "SKU-107", "time": "4h ago" }
     ]
 }

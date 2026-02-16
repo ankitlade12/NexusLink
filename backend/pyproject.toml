@@ -1,11 +1,12 @@
 [project]
-name = "backend"
+name = "NexusLink"
 version = "0.1.0"
-description = "Add your description here"
+description = "NexusLink — Supply Chain Data Fabric & Intelligence Engine"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "anthropic>=0.79.0",
+    "openai",
+    "python-dotenv",
     "fastapi>=0.129.0",
     "uvicorn>=0.40.0",
 ]
