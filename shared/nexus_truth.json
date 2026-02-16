@@ -1,0 +1,108 @@
+{
+    "inventory": [
+        {
+            "id": "SKU-101",
+            "name": "Alpine Ridge Jacket",
+            "category": "Outerwear",
+            "systems": {
+                "shopify": 342,
+                "amazon": 210,
+                "wms": 289,
+                "pos": 45
+            },
+            "true_atp": 289,
+            "discrepancy": true,
+            "risk_value": 31200,
+            "country_of_origin": "Vietnam",
+            "lead_time_days": 45
+        },
+        {
+            "id": "SKU-102",
+            "name": "Summit Series Tent",
+            "category": "Equipment",
+            "systems": {
+                "shopify": 120,
+                "amazon": 85,
+                "wms": 120,
+                "pos": 10
+            },
+            "true_atp": 120,
+            "discrepancy": false,
+            "risk_value": 0,
+            "country_of_origin": "China",
+            "lead_time_days": 60
+        },
+        {
+            "id": "SKU-103",
+            "name": "Glacier Trail Pack",
+            "category": "Packs",
+            "systems": {
+                "shopify": 540,
+                "amazon": 420,
+                "wms": 480,
+                "pos": 60
+            },
+            "true_atp": 480,
+            "discrepancy": true,
+            "risk_value": 12500,
+            "country_of_origin": "Vietnam",
+            "lead_time_days": 35
+        }
+    ],
+    "tariffs": [
+        {
+            "country": "Vietnam",
+            "current_rate": 0.15,
+            "scenarios": [
+                {
+                    "name": "Geopolitical Spike",
+                    "rate": 0.32,
+                    "effective_date": "2026-05-01"
+                }
+            ]
+        },
+        {
+            "country": "China",
+            "current_rate": 0.25,
+            "scenarios": [
+                {
+                    "name": "Trade War 2.0",
+                    "rate": 0.45,
+                    "effective_date": "2026-06-15"
+                }
+            ]
+        },
+        {
+            "country": "Mexico",
+            "current_rate": 0.0,
+            "scenarios": [
+                {
+                    "name": "USMCA Review",
+                    "rate": 0.05,
+                    "effective_date": "2026-09-01"
+                }
+            ]
+        }
+    ],
+    "returns": {
+        "in_limbo": 15,
+        "total_frozen_value": 40800,
+        "average_days_stuck": 24
+    },
+    "alerts": [
+        {
+            "id": "A1",
+            "type": "CRITICAL",
+            "message": "Alpine Ridge Jacket oversold by 103 units across channels",
+            "risk": 31200,
+            "action": "Reallocate from REI Wholesale batch"
+        },
+        {
+            "id": "A2",
+            "type": "WARNING",
+            "message": "Vietnam tariff increase effective in 87 days — $2.75M exposure",
+            "risk": 2750000,
+            "action": "View Relocation Plan"
+        }
+    ]
+}
