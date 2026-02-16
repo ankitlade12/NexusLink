@@ -1,11 +1,18 @@
 import React from 'react';
 
-const DashboardLayout = ({ children }) => {
+const DashboardLayout = ({ children, activeTab, onTabChange }) => {
+    const navItems = [
+        { id: 'inventory', label: 'Inventory' },
+        { id: 'tariffs', label: 'Tariffs' },
+        { id: 'query', label: 'AI Query' },
+        { id: 'parser', label: 'Parser' },
+    ];
+
     return (
-        <div className="min-h-screen bg-nexus-dark text-white p-4 lg:p-10 selection:bg-nexus-accent/30">
+        <div className="min-h-screen bg-nexus-dark text-white p-4 lg:p-10 selection:bg-nexus-accent/30 font-sans">
             <header className="flex flex-col md:flex-row md:items-center justify-between mb-12 border-b border-white/10 pb-8">
-                <div className="flex items-center gap-4 mb-4 md:mb-0">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-nexus-accent to-blue-600 flex items-center justify-center text-xl font-black shadow-[0_0_20px_rgba(56,189,248,0.4)]">
+                <div className="flex items-center gap-4 mb-4 md:mb-0 group cursor-pointer" onClick={() => onTabChange('inventory')}>
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-nexus-accent to-blue-600 flex items-center justify-center text-xl font-black shadow-[0_0_20px_rgba(56,189,248,0.4)] group-hover:scale-110 transition-transform">
                         NL
                     </div>
                     <div>
@@ -17,10 +24,15 @@ const DashboardLayout = ({ children }) => {
                 </div>
 
                 <nav className="flex items-center gap-6 text-sm font-bold uppercase tracking-widest text-slate-500">
-                    <a href="#" className="text-nexus-accent border-b-2 border-nexus-accent pb-1">Inventory</a>
-                    <a href="#" className="hover:text-white transition-colors">Tariffs</a>
-                    <a href="#" className="hover:text-white transition-colors">IA Query</a>
-                    <a href="#" className="hover:text-white transition-colors">Parser</a>
+                    {navItems.map(item => (
+                        <button
+                            key={item.id}
+                            onClick={() => onTabChange(item.id)}
+                            className={`transition-all pb-1 hover:text-white ${activeTab === item.id ? 'text-nexus-accent border-b-2 border-nexus-accent' : ''}`}
+                        >
+                            {item.label}
+                        </button>
+                    ))}
                 </nav>
             </header>
 

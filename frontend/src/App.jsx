@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react'
 import DashboardLayout from './components/layout/DashboardLayout'
 import InventoryTable from './components/inventory/InventoryTable'
 import RiskSummary from './components/inventory/RiskSummary'
 import AlertPanel from './components/alerts/AlertPanel'
+import TariffSimulator from './components/intelligence/TariffSimulator'
+import AIQuery from './components/intelligence/AIQuery'
 
 function App() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('inventory')
 
   useEffect(() => {
     fetch('http://localhost:8000/inventory')
@@ -34,18 +36,41 @@ function App() {
     </div>
   )
 
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'inventory':
+        return (
+          <div className="flex flex-col lg:flex-row gap-10">
+            <div className="flex-1">
+              <RiskSummary inventory={data.inventory} alerts={data.alerts} />
+              <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4 px-2">Unified Inventory Truth</h2>
+              <InventoryTable inventory={data.inventory} />
+            </div>
+            <AlertPanel alerts={data.alerts} />
+          </div>
+        )
+      case 'tariffs':
+        return <TariffSimulator inventory={data.inventory} tariffs={data.tariffs} />
+      case 'query':
+        return <AIQuery />
+      case 'parser':
+        return (
+          <div className="flex flex-col items-center justify-center h-96 opacity-40 border-2 border-dashed border-white/10 rounded-3xl">
+            <div className="text-3xl font-black uppercase mb-2">Parser Demo Coming in Phase 4</div>
+            <div className="text-xs uppercase tracking-[0.3em]">Document OCR & Extraction Layer</div>
+          </div>
+        )
+      default:
+        return null
+    }
+  }
+
   return (
-    <DashboardLayout>
-      <div className="flex flex-col lg:flex-row gap-10">
-        <div className="flex-1">
-          <RiskSummary inventory={data.inventory} alerts={data.alerts} />
-          <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4 px-2">Unified Inventory Truth</h2>
-          <InventoryTable inventory={data.inventory} />
-        </div>
-        <AlertPanel alerts={data.alerts} />
-      </div>
+    <DashboardLayout activeTab={activeTab} onTabChange={setActiveTab}>
+      {renderContent()}
     </DashboardLayout>
   )
 }
+
 
 export default App
