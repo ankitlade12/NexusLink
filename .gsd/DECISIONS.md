@@ -1,3 +1,0 @@
-# DECISIONS.md
-
-# JOURNAL.md

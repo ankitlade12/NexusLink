@@ -36,10 +36,11 @@ frontend/node_modules/.vite/
 *.log
 npm-debug.log*
 
-# GSD / Agent / Gemini
+# GSD / Agent / Gemini / Cursor
 .gsd/
 .agent/
 .gemini/
+.cursor/
 .codex/
 .agentdocs/
 AGENTS.md
